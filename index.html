@@ -47,9 +47,9 @@
             </div>
             <form id="rate-form" class="shipping-form">
               <div class="location-row">
-                <label class="field"><span>Alamat jemput</span><div class="input-wrap"><span class="input-icon" aria-hidden="true">⌖</span><input id="origin" name="origin" placeholder="Masukkan alamat jemput" required /></div></label>
+                <label class="field"><span>Alamat jemput</span><div class="input-wrap"><span class="input-icon" aria-hidden="true">⌖</span><input id="origin" name="origin" placeholder="Masukkan alamat jemput" oninput="calculateVisibleRate()" required /></div></label>
                 <span class="route-line" aria-hidden="true"></span>
-                <label class="field"><span>Alamat penerima</span><div class="input-wrap"><span class="input-icon" aria-hidden="true">⌖</span><input id="destination" name="destination" placeholder="Masukkan alamat penerima" required /></div></label>
+                <label class="field"><span>Alamat penerima</span><div class="input-wrap"><span class="input-icon" aria-hidden="true">⌖</span><input id="destination" name="destination" placeholder="Masukkan alamat penerima" oninput="calculateVisibleRate()" required /></div></label>
               </div>
               <div class="package-details">
                 <div class="field-label"><span>Isi detail paket</span><small>Informasi untuk kurir</small></div>
@@ -68,17 +68,15 @@
                   <input type="radio" name="fleet" value="pickup" checked />
                   <span class="fleet-photo"><img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/2009-2012_Suzuki_Carry_DA63T.jpg" alt="Mobil pickup Suzuki New Carry" /></span>
                   <span class="fleet-details"><strong>Pickup / New Carry</strong><small>Untuk barang besar dan banyak</small></span>
-                  <b>Rp10.000/km</b>
                 </label>
                 <label class="fleet-choice">
                   <input type="radio" name="fleet" value="calya" />
                   <span class="fleet-photo"><img src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=500&q=80" alt="Mobil Calya" /></span>
                   <span class="fleet-details"><strong>Calya</strong><small>Nyaman untuk paket ringan</small></span>
-                  <b>Rp7.500/km</b>
                 </label>
               </div>
             </div>
-            <div class="auto-price-note" id="auto-price-note">Tarif otomatis <strong>Rp10.000/km</strong></div>
+            <div class="auto-price-note" id="auto-price-note">Tarif otomatis menyesuaikan jarak</div>
             <div class="rate-result" id="rate-result" aria-live="polite"><div class="empty-result">Isi kedua alamat untuk melihat estimasi harga.</div></div>
             <a class="primary-button order-button" id="order-button" href="https://wa.me/6281212082536" target="_blank" rel="noopener noreferrer" hidden>Pesan via WhatsApp <span>↗</span></a>
           </div>
@@ -158,6 +156,6 @@
     </section>
   </div>
   <div class="toast" id="toast" role="status"></div>
-  <script src="script.js"></script>
+  <script src="script.js?v=20260912-5"></script>
 </body>
 </html>

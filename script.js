@@ -13,7 +13,6 @@ let mapsReady = false;
 let directionsService;
 let selectedPlaces = { origin: null, destination: null };
 let routeRequestId = 0;
-let routeLookupTimer;
 const orderButton = document.querySelector('#order-button');
 
 async function loadApiConfig() {
@@ -97,7 +96,6 @@ accountModal.addEventListener('click', (event) => { if (event.target === account
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !accountModal.hidden) closeAccount(); });
 document.querySelector('[data-open-register]').addEventListener('click', () => showAccountView('register'));
 document.querySelector('[data-open-login]').addEventListener('click', () => showAccountView('login'));
-document.querySelector('[data-open-profile]')?.addEventListener('click', () => showAccountView('profile'));
 
 document.querySelector('#register-form').addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -205,29 +203,10 @@ function estimateDistance(origin, destination) {
   return Math.max(1, (score % 24) + 2);
 }
 
-async function geocodeAddress(address) {
-  const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=id&q=${encodeURIComponent(address)}`);
-  if (!response.ok) throw new Error('Lokasi tidak dapat dicari.');
-  const results = await response.json();
-  if (!results[0]) throw new Error('Alamat tidak ditemukan.');
-  return { latitude: Number(results[0].lat), longitude: Number(results[0].lon) };
-}
-
-async function estimateRoadDistance(origin, destination) {
-  const [originPoint, destinationPoint] = await Promise.all([geocodeAddress(origin), geocodeAddress(destination)]);
-  const coordinates = `${originPoint.longitude},${originPoint.latitude};${destinationPoint.longitude},${destinationPoint.latitude}`;
-  const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=false`);
-  if (!response.ok) throw new Error('Rute jalan tidak dapat dihitung.');
-  const data = await response.json();
-  const distance = data.routes?.[0]?.distance;
-  if (!distance) throw new Error('Rute jalan tidak ditemukan.');
-  return Math.max(1, Math.ceil(distance / 1000));
-}
-
 function renderRateEstimate(distance) {
   const origin = document.querySelector('#origin').value.trim();
   const destination = document.querySelector('#destination').value.trim();
-  const packageType = document.querySelector('#package-type').value.trim();
+  const packageType = document.querySelector('#package-type').value.trim() || 'Paket';
   const packageWeight = document.querySelector('#package-weight').value;
   const packageSize = document.querySelector('#package-size').selectedOptions[0].textContent;
   const fragile = document.querySelector('#fragile').checked;
@@ -241,9 +220,8 @@ function renderRateEstimate(distance) {
   const fleetRates = { pickup: 10000, calya: 7500 };
   const rate = fleetRates[fleet];
   const price = (distance * rate).toLocaleString('id-ID');
-  document.querySelector('#auto-price-note').innerHTML = `Tarif otomatis <strong>Rp${rate.toLocaleString('id-ID')}/km</strong>`;
-  const packageLabel = packageType || 'Detail barang belum diisi';
-  result.innerHTML = `<div class="result-card"><p><span class="result-label">Estimasi ${fleetNames[fleet]} · Rp${rate.toLocaleString('id-ID')}/km</span><strong>Rp ${price}</strong>${distance} km · ${packageLabel} · ${packageWeight} kg${fragile ? ' · Mudah pecah' : ''}</p><span aria-hidden="true">✓</span></div>`;
+  document.querySelector('#auto-price-note').textContent = 'Tarif otomatis menyesuaikan jarak';
+  result.innerHTML = `<div class="result-card"><p><span class="result-label">Estimasi ${fleetNames[fleet]}</span><strong>Rp ${price}</strong>${distance} km · ${packageType} · ${packageWeight} kg${fragile ? ' · Mudah pecah' : ''}</p><span aria-hidden="true">✓</span></div>`;
   const message = [`Halo JJJ Delivery Service, saya ingin pesan pengiriman.`, `Alamat jemput: ${origin}`, `Alamat penerima: ${destination}`, `Barang: ${packageType}`, `Berat: ${packageWeight} kg`, `Ukuran: ${packageSize}`, `Armada: ${fleetNames[fleet]}`, `Jarak: ${distance} km`, `Estimasi tarif: Rp ${price}`, fragile ? 'Catatan: Barang mudah pecah' : ''].filter(Boolean).join('\n');
   orderButton.href = `https://wa.me/6281212082536?text=${encodeURIComponent(message)}`;
   orderButton.hidden = false;
@@ -281,10 +259,17 @@ function renderRateEstimate(distance) {
   };
 }
 
+window.calculateVisibleRate = function calculateVisibleRate() {
+  const origin = document.querySelector('#origin').value.trim();
+  const destination = document.querySelector('#destination').value.trim();
+  if (origin.length >= 3 && destination.length >= 3) {
+    renderRateEstimate(estimateDistance(origin, destination));
+  }
+};
+
 function updateRateEstimate() {
   const origin = document.querySelector('#origin').value.trim();
   const destination = document.querySelector('#destination').value.trim();
-  const result = document.querySelector('#rate-result');
   if (origin.length < 3 || destination.length < 3) {
     renderRateEstimate(0);
     return;
@@ -301,20 +286,7 @@ function updateRateEstimate() {
     });
     return;
   }
-  const requestId = ++routeRequestId;
-  clearTimeout(routeLookupTimer);
-  result.innerHTML = '<div class="empty-result">Mendeteksi lokasi dan menghitung jarak jalan...</div>';
-  routeLookupTimer = setTimeout(async () => {
-    try {
-      const distance = await estimateRoadDistance(origin, destination);
-      if (requestId === routeRequestId) renderRateEstimate(distance);
-    } catch (error) {
-      if (requestId === routeRequestId) {
-        result.innerHTML = '<div class="empty-result">Alamat belum ditemukan. Tambahkan nama jalan, kota, atau kecamatan yang lebih lengkap.</div>';
-        orderButton.hidden = true;
-      }
-    }
-  }, 450);
+  renderRateEstimate(estimateDistance(origin, destination));
 }
 
 document.querySelectorAll('#origin, #destination, #package-type, #package-weight').forEach((input) => input.addEventListener('input', () => {
@@ -326,6 +298,18 @@ document.querySelectorAll('input[name="fleet"]').forEach((input) => input.addEve
   document.querySelectorAll('.fleet-choice').forEach((choice) => choice.classList.toggle('is-selected', choice.querySelector('input').checked));
   updateRateEstimate();
 }));
+
+document.querySelectorAll('.fleet-choice').forEach((choice) => choice.addEventListener('click', (event) => {
+  if (event.target.matches('input')) return;
+  const input = choice.querySelector('input[name="fleet"]');
+  input.checked = true;
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+}));
+
+const rateForm = document.querySelector('#rate-form');
+rateForm.addEventListener('input', updateRateEstimate);
+rateForm.addEventListener('change', updateRateEstimate);
+updateRateEstimate();
 
 function initGoogleMaps() {
   mapsReady = true;

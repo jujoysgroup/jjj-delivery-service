@@ -11,6 +11,18 @@ Aplikasi pengiriman barang dengan login admin, profile pengguna, estimasi tarif,
    npm start
 4. Buka browser ke http://localhost:3000
 
+## Deploy online ke Render
+
+1. Upload project ini ke repository GitHub baru.
+2. Di Render pilih `New` lalu `Blueprint`.
+3. Pilih repository tersebut; Render akan membaca `render.yaml`.
+4. Isi `GOOGLE_MAPS_API_KEY` saat diminta.
+5. Jalankan deploy dan buka URL HTTPS yang diberikan Render.
+
+Render akan menjalankan `npm install`, `npm start`, dan memeriksa `/api/health`.
+
+Catatan: folder `data/` disimpan pada persistent disk Render. Untuk skala besar, migrasikan database ke PostgreSQL.
+
 ## Default akun demo
 
 - Admin: admin@jjjdelivery.com / admin123
@@ -21,13 +33,3 @@ Aplikasi pengiriman barang dengan login admin, profile pengguna, estimasi tarif,
 - Untuk Google Maps, aktifkan Maps JavaScript API, Places API, dan Directions API di Google Cloud.
 - Backend saat ini menggunakan SQLite lokal untuk demo produksi ringan.
 - Untuk penggunaan multi-user yang lebih besar, perlu migrasi ke PostgreSQL dan hosting cloud.
-
-## Publish ke Render
-
-1. Buat repository baru di GitHub, lalu upload seluruh isi folder proyek ini.
-2. Di Render pilih **New +** > **Blueprint** dan hubungkan repository tersebut.
-3. Render akan membaca `render.yaml`, meng-install dependency, dan menjalankan `npm start`.
-4. Isi `GOOGLE_MAPS_API_KEY` pada Environment jika ingin mengaktifkan autocomplete dan rute Google Maps.
-5. Setelah deploy selesai, buka URL `.onrender.com` yang diberikan Render.
-
-`render.yaml` memakai persistent disk untuk folder `data/` agar akun dan pesanan SQLite tidak hilang saat aplikasi restart. Fitur persistent disk Render memerlukan paket berbayar.
