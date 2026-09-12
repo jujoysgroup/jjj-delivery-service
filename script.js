@@ -13,6 +13,7 @@ let mapsReady = false;
 let directionsService;
 let selectedPlaces = { origin: null, destination: null };
 let routeRequestId = 0;
+let routeLookupTimer;
 const orderButton = document.querySelector('#order-button');
 
 async function loadApiConfig() {
@@ -204,6 +205,25 @@ function estimateDistance(origin, destination) {
   return Math.max(1, (score % 24) + 2);
 }
 
+async function geocodeAddress(address) {
+  const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=id&q=${encodeURIComponent(address)}`);
+  if (!response.ok) throw new Error('Lokasi tidak dapat dicari.');
+  const results = await response.json();
+  if (!results[0]) throw new Error('Alamat tidak ditemukan.');
+  return { latitude: Number(results[0].lat), longitude: Number(results[0].lon) };
+}
+
+async function estimateRoadDistance(origin, destination) {
+  const [originPoint, destinationPoint] = await Promise.all([geocodeAddress(origin), geocodeAddress(destination)]);
+  const coordinates = `${originPoint.longitude},${originPoint.latitude};${destinationPoint.longitude},${destinationPoint.latitude}`;
+  const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=false`);
+  if (!response.ok) throw new Error('Rute jalan tidak dapat dihitung.');
+  const data = await response.json();
+  const distance = data.routes?.[0]?.distance;
+  if (!distance) throw new Error('Rute jalan tidak ditemukan.');
+  return Math.max(1, Math.ceil(distance / 1000));
+}
+
 function renderRateEstimate(distance) {
   const origin = document.querySelector('#origin').value.trim();
   const destination = document.querySelector('#destination').value.trim();
@@ -264,6 +284,7 @@ function renderRateEstimate(distance) {
 function updateRateEstimate() {
   const origin = document.querySelector('#origin').value.trim();
   const destination = document.querySelector('#destination').value.trim();
+  const result = document.querySelector('#rate-result');
   if (origin.length < 3 || destination.length < 3) {
     renderRateEstimate(0);
     return;
@@ -280,7 +301,20 @@ function updateRateEstimate() {
     });
     return;
   }
-  renderRateEstimate(estimateDistance(origin, destination));
+  const requestId = ++routeRequestId;
+  clearTimeout(routeLookupTimer);
+  result.innerHTML = '<div class="empty-result">Mendeteksi lokasi dan menghitung jarak jalan...</div>';
+  routeLookupTimer = setTimeout(async () => {
+    try {
+      const distance = await estimateRoadDistance(origin, destination);
+      if (requestId === routeRequestId) renderRateEstimate(distance);
+    } catch (error) {
+      if (requestId === routeRequestId) {
+        result.innerHTML = '<div class="empty-result">Alamat belum ditemukan. Tambahkan nama jalan, kota, atau kecamatan yang lebih lengkap.</div>';
+        orderButton.hidden = true;
+      }
+    }
+  }, 450);
 }
 
 document.querySelectorAll('#origin, #destination, #package-type, #package-weight').forEach((input) => input.addEventListener('input', () => {
